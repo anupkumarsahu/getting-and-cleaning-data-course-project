@@ -41,7 +41,44 @@ activityLabels <- read.table(file.path(dataDir, "activity_labels.txt", sep = '')
                              col.names = c("activityId", "activityLabel"), 
                              stringsAsFactors=FALSE)
 
+# Read features
+features <- read.table(file.path(dataDir, "features.txt"), as.is = TRUE)
 
+# Merge train and test data set into one data set called 
+theData <- rbind(
+  cbind(trainSubject, trainData, trainlabel),
+  cbind(testSubject, testData, testlabel)
+)
 
+# Set column names
+colnames(theData) <- c("subject", features[, 2], "activity")
 
+# Remove data sets to release memory
+rm(trainSubject, trainData, trainlabel, testSubject, testData, testlabel)
 
+# List of columns in theData set to keep based on column name
+columnToKeep <- grepl("subject|activity|mean|std", colnames(theData))
+
+# Keep data of listed columns
+theData <- theData[, columnToKeep]
+
+theData$activity <- factor(theData$activity, levels = activityLabels[, 1], labels = activityLabels[, 2])
+
+theDataColumn <- colnames(theData)
+theDataColumn <- gsub("[\\(\\)-]", "", theDataColumn)
+
+theDataColumn <- gsub("^f", "freq", theDataColumn)
+theDataColumn <- gsub("^t", "time", theDataColumn)
+theDataColumn <- gsub("mean", "Mean", theDataColumn)
+theDataColumn <- gsub("std", "stdDev", theDataColumn)
+theDataColumn <- gsub("BodyBody", "Body", theDataColumn)
+
+# Set column names
+colnames(theData) <- theDataColumn
+
+dataMean <- theData %>% 
+  group_by(subject, activity) %>%
+  summarise_each(funs(mean))
+
+write.table(dataMean, "tidy_data.txt", row.names = FALSE, 
+            quote = FALSE)
